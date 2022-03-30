@@ -8,9 +8,11 @@ This is a little toy service manager for my Go projects.
 Create a implementation of the Run interface
 ```go
 type svc struct {
+// This could be anything your service needs
+// Nothing needs to be exported
 }
 
-func (svc *s) Run (ctx context.Context) error {
+func (s *svc) Run (ctx context.Context) error {
 
 }
 ```

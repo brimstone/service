@@ -7,11 +7,11 @@ import (
 	"github.com/brimstone/logger"
 )
 
-type Run interface {
+type Runner interface {
 	Run(ctx context.Context) error
 }
 
-type Stat interface {
+type Stater interface {
 	Stat() interface{}
 }
 
@@ -21,7 +21,7 @@ type manager struct {
 }
 
 type runable struct {
-	run     Run
+	run     Runner
 	running bool
 	ctx     context.Context
 	name    string
@@ -29,7 +29,7 @@ type runable struct {
 }
 
 type statable struct {
-	stat   Stat
+	stat   Stater
 	ctx    context.Context
 	name   string
 	cancel func()
@@ -37,7 +37,7 @@ type statable struct {
 
 var Manager manager
 
-func (m *manager) Add(name string, svc Run) {
+func (m *manager) Add(name string, svc Runner) {
 	if m.runables == nil {
 		m.runables = make(map[string]*runable)
 	}
@@ -51,8 +51,8 @@ func (m *manager) Add(name string, svc Run) {
 func (m *manager) RunAll(ctx context.Context) {
 	log := logger.New()
 	for n, r := range m.runables {
-		r.ctx, r.cancel = context.WithCancel(ctx)
-		go func(name string) {
+		go func(name string, r *runable) {
+			r.ctx, r.cancel = context.WithCancel(ctx)
 			log.Info("Starting service",
 				log.Field("service", name),
 			)
@@ -65,7 +65,7 @@ func (m *manager) RunAll(ctx context.Context) {
 					log.Field("err", err),
 				)
 			}
-		}(n)
+		}(n, r)
 	}
 }
 
@@ -94,10 +94,9 @@ func (m *manager) StopAll() {
 func (m *manager) Stats() map[string]interface{} {
 	s := make(map[string]interface{})
 	for n, r := range m.runables {
-		if st, ok := r.run.(Stat); ok {
+		if st, ok := r.run.(Stater); ok {
 			s[n] = st.Stat()
 		} else {
-
 			s[n] = struct {
 				Running bool `json:"running"`
 			}{
